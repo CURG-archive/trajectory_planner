@@ -1,0 +1,178 @@
+#!/usr/bin/env python
+import roslib
+roslib.load_manifest( "trajectory_planner" )
+import rospy
+import time
+import graspit_msgs.msg
+import geometry_msgs.msg
+import tf, tf_conversions, tf.transformations
+from numpy import pi, eye, dot, cross, linalg, sqrt, ceil, size
+from numpy import hstack, vstack, mat, array, arange, fabs
+import tf_conversions.posemath as pm
+from time import sleep 
+import trajectory_planner as tp
+import pdb
+from test_object_grasps import file_name_dict
+from std_msgs.msg import String, Empty
+from IPython.Shell import IPShellEmbed
+from adjust_message_robot_server import AdjustExecutor, ShakeExecutor, MoveExecutor
+from time import time
+from model_rec_manager import *
+import HaoUtil as hu
+
+Hao = True
+
+class GraspExecutor():
+    """@brief - Generates a persistent converter between grasps published by a graspit commander and
+    the trajectory planning module to actually lift objects off the table
+
+    @member grasp_listener - subscriber to the graspit grasp channel. Expects graspit_msgs Grasp types
+    @member name_listener - subscribes to an object name channel. Expects a string which corresponds
+                            to an entry in the filename dictionary 
+    @member global_data - Planning environment
+    @member target_object_name - the current grasp target
+    """
+
+    def __init__( self ):
+        self.grasp_listener = rospy.Subscriber("/graspit/grasps", graspit_msgs.msg.Grasp, self.process_grasp_msg)
+        self.name_listener = rospy.Subscriber("/graspit/target_name", String, self.process_object_name)
+        self.refresh_models_listener = rospy.Subscriber("/graspit/refresh_models", Empty, self.refresh_model_list)
+        self.global_data = tp.SetupStaubliEnv(True)
+        self.graspit_status_publisher = rospy.Publisher("/graspit/status", graspit_msgs.msg.GraspStatus)
+        self.graspit_target_publisher = rospy.Publisher("/graspit/target_name", String)
+        self.target_object_name = "flask"
+        self.model_manager = ModelRecManager(self.global_data.listener)
+        self.last_grasp_time = 0
+
+    def process_object_name(self, string):
+        self.target_object_name = string.data
+    
+    def refresh_model_list(self, empty_msg):
+        print "refreshing model list"
+        self.model_manager.refresh()
+        self.model_manager()
+        self.publish_target()
+
+    def publish_target(self):
+        self.graspit_target_publisher.publish(self.model_manager.get_model_names()[0])
+        
+    def process_grasp_msg(self, grasp_msg):
+        """@brief - Attempt to grasp the object and lift it
+
+        First moves the arm to pregrasp the object, then attempts to grasp and lift it.
+        The grasp and lifting phase is currently completely open loop
+        
+        """
+        if (time() - self.last_grasp_time) < 30:
+            return [], []
+        self.last_grasp_time = time()
+        print grasp_msg
+        grasp_status = graspit_msgs.msg.GraspStatus.SUCCESS
+        grasp_status_msg = "grasp_succeeded"
+        success = 1
+        if not tp.is_home():
+           print 'go home'
+           tp.go_home(self.global_data)
+        #    if not success:
+        #        grasp_status = graspit_msgs.msg.GraspStatus.UNREACHABLE
+        #        grasp_status_msg = "Unable to go home"
+               
+        if success:
+            success, grasp_status_msg, positions = tp.open_barrett()
+            if not success:
+                grasp_status = graspit_msgs.msg.GraspStatus.ROBOTERROR
+                
+        if success:
+            grasp_tran = pm.toMatrix(pm.fromMsg(grasp_msg.final_grasp_pose))
+            grasp_tran[0:3,3] /=1000 #mm to meters
+            tp.MoveHandSrv(1, [0,0,0, grasp_msg.pre_grasp_dof[0]])
+            tp.update_robot(self.global_data.or_env.GetRobots()[0])
+
+            print 'pre-grasp'
+            self.model_manager()
+#            success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, file_name_dict[self.target_object_name],  grasp_tran)
+            print 'after model_manager()'
+            success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, file_name_dict[self.target_object_name],  False, grasp_tran)
+            print 'after pre-grasp'
+            #raw_input("Press enter...")
+            tp.update_robot(self.global_data.or_env.GetRobots()[0])
+            if not success:
+                if not j:
+                    grasp_status = graspit_msgs.msg.GraspStatus.UNREACHABLE
+                    grasp_status_msg = "Pregrasp tran Out of range!"
+                else:
+                    grasp_status = graspit_msgs.msg.GraspStatus.FAILED
+                    grasp_status_msg = "Unknown planner failure!"
+
+        if success:
+            if not Hao:
+                success = tp.move_forward(0.05, True)
+            else:
+                hu.GuardedMoveUntilHit(self.global_data, array([0,0,1]), 'PALM', 0.05, 20)
+                success = True
+            
+            if not success:
+                grasp_status = graspit_msgs.msg.GraspStatus.UNREACHABLE
+                grasp_status_msg = "Unable to move forward to grasp!"
+
+        if Hao:
+            """new routine"""
+            hu.GuardedCloseHand(self.global_data)
+        else:        
+            """old routine"""
+            if success:
+                success, grasp_status_msg, joint_angles = tp.move_hand([grasp_msg.pre_grasp_dof[1],grasp_msg.pre_grasp_dof[2], grasp_msg.pre_grasp_dof[3], grasp_msg.pre_grasp_dof[0]])
+
+
+            if success:
+                success, grasp_status_msg, joint_angles = tp.move_hand([grasp_msg.final_grasp_dof[1],grasp_msg.final_grasp_dof[2], grasp_msg.final_grasp_dof[3], grasp_msg.final_grasp_dof[0]])            
+
+
+            if success:
+                success, grasp_status_msg, joint_angles = tp.close_barrett()
+            if not success:
+                grasp_status = graspit_msgs.msg.GraspStatus.ROBOTERROR
+                        
+
+        if success:
+            selection = int(raw_input('Lift up (1) or not (0): '))
+            if selection == 1:
+                print 'lift up the object'
+                success = tp.lift_arm(.05, True)
+                if not success:
+                    grasp_status = graspit_msgs.msg.GraspStatus.UNREACHABLE
+                    grasp_status_msg = "Couldn't lift object"
+            else:
+                print 'not lift up the object'
+            
+
+        #Maybe decide if it has been successfully lifted here...
+        if success:
+            rospy.logwarn(grasp_status_msg)
+        else:
+            rospy.logfatal(grasp_status_msg)
+        self.graspit_status_publisher.publish(grasp_status, grasp_status_msg)
+        print grasp_status_msg
+        return grasp_status, grasp_status_msg
+
+
+
+
+if __name__ == '__main__':
+    try:
+        rospy.init_node('graspit_message_robot_server')
+        ge = GraspExecutor()
+        if Hao:
+            ae = AdjustExecutor(ge.global_data)
+            se = ShakeExecutor(ge.global_data)
+            me = MoveExecutor(ge.global_data)
+        loop = rospy.Rate(10)
+        #        ipshell = IPShellEmbed(banner = 'Dropping into IPython',
+#                               exit_msg = 'Leaving Interpreter, back to program.')
+#       ipshell(local_ns = locals())
+        
+        while not rospy.is_shutdown():
+            'foo'
+            loop.sleep()
+    except rospy.ROSInterruptException: pass
+
