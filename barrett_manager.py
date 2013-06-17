@@ -6,8 +6,6 @@ import geometry_msgs
 from std_srvs.srv import Empty as EmptySrv
 from std_msgs.msg import Empty as EmptyMsg 
 from tf import transformations as tr
-import barrettBH8_280.srv
-import barrettBH8_280.msg
 import pr_msgs.msg
 import pr_msgs.srv
 from OWDUtil import *
