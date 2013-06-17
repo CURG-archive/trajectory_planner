@@ -14,13 +14,13 @@ import trajectory_planner as tp
 import pdb
 from test_object_grasps import file_name_dict
 from std_msgs.msg import String, Empty
-from IPython.Shell import IPShellEmbed
+#from IPython.Shell import IPShellEmbed
 from adjust_message_robot_server import AdjustExecutor, ShakeExecutor, MoveExecutor
 from time import time
 from model_rec_manager import *
 import HaoUtil as hu
 
-Hao = True
+Hao = False
 
 class GraspExecutor():
     """@brief - Generates a persistent converter between grasps published by a graspit commander and
@@ -33,16 +33,24 @@ class GraspExecutor():
     @member target_object_name - the current grasp target
     """
 
-    def __init__( self ):
+    def __init__(self, init_planner = True):
         self.grasp_listener = rospy.Subscriber("/graspit/grasps", graspit_msgs.msg.Grasp, self.process_grasp_msg)
         self.name_listener = rospy.Subscriber("/graspit/target_name", String, self.process_object_name)
         self.refresh_models_listener = rospy.Subscriber("/graspit/refresh_models", Empty, self.refresh_model_list)
-        self.global_data = tp.SetupStaubliEnv(True)
+        
+        if init_planner:
+            self.global_data = tp.SetupStaubliEnv(True)
+            self.model_manager = ModelRecManager(self.global_data.listener)
+        else:
+            self.model_manager = ModelRecManager()
         self.graspit_status_publisher = rospy.Publisher("/graspit/status", graspit_msgs.msg.GraspStatus)
         self.graspit_target_publisher = rospy.Publisher("/graspit/target_name", String)
+        self.graspit_object_publisher = rospy.Publisher("/graspit/object_name", graspit_msgs.msg.ObjectInfo)
+        self.remove_object_publisher = rospy.Publisher("/graspit/remove_objects", String)
         self.target_object_name = "flask"
-        self.model_manager = ModelRecManager(self.global_data.listener)
+
         self.last_grasp_time = 0
+        self.table_cube=[geometry_msgs.msg.Point(-0.7,0,0), geometry_msgs.msg.Point(0,1,1)]
 
     def process_object_name(self, string):
         self.target_object_name = string.data
@@ -55,6 +63,19 @@ class GraspExecutor():
 
     def publish_target(self):
         self.graspit_target_publisher.publish(self.model_manager.get_model_names()[0])
+
+    def publish_table_models(self):
+        self.model_manager()
+        table_models = [model for model in self.model_manager.model_list if self.point_within_table_cube(model.get_world_pose().position)]
+        for model in table_models:
+            model()
+            object_name = "%s %s"%(model.model_name, model.object_name)
+            self.graspit_object_publisher.publish(object_name, model.get_world_pose())
+
+    def clear_objects(self):
+        model_name_list = []        
+        model_name_list = [model.object_name for model in self.model_manager.model_list]
+        self.remove_objects_publisher.publish(' '.join(model_name_list))
         
     def process_grasp_msg(self, grasp_msg):
         """@brief - Attempt to grasp the object and lift it
@@ -154,6 +175,15 @@ class GraspExecutor():
         self.graspit_status_publisher.publish(grasp_status, grasp_status_msg)
         print grasp_status_msg
         return grasp_status, grasp_status_msg
+
+    def point_within_table_cube(self, test_point):
+        [min_corner_point , max_corner_point ] = self.table_cube 
+        keys = ['x', 'y', 'z']
+        for k in keys:
+            t = getattr(test_point, k)
+            if t < getattr(min_corner_point, k) or t > getattr(max_corner_point, k):
+                return False
+        return True
 
 
 
