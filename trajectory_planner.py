@@ -471,6 +471,13 @@ def load_table( or_env ):
     k.InitFromTrimesh(kb, True)
     or_env.AddKinBody(k)
 
+def regenerate_ikmodel():
+    global_data = GlobalData()
+    global_data.or_env = Environment()
+    staubli = check_or_load_staubli( global_data.or_env )
+    ikmodel = openravepy.databases.inversekinematics.InverseKinematicsModel(staubli,iktype=IkParameterization.Type.Transform6D)
+    ikmodel.autogenerate()
+
 
 def SetupStaubliEnv(debug = False):
     """@brief - set up the staubli environment for planning
@@ -505,9 +512,12 @@ def SetupStaubliEnv(debug = False):
     b[0].Enable(False)
     """Load the manipulation problem to enable ik solutions
     """
-    RaveLoadPlugin('/home/armuser/openrave/plugins/comps/planning/manipulation2/libmanipulation.so')
+    RaveLoadPlugin('/home/armuser/openrave/plugins/comps/plugins/libGeneralIK.so')
+    RaveLoadPlugin('/home/armuser/openrave/plugins/comps/plugins/libcbirrt.so')
+    RaveLoadPlugin('/home/armuser/openrave/plugins/comps/plugins/libmanipulation.so')
+
     ikmodel = openravepy.databases.inversekinematics.InverseKinematicsModel(staubli,iktype=IkParameterization.Type.Transform6D)
-    ikmodel.load('/home/armuser/.openrave/kinematics.2ac375a0aaf420715f482953e36187a5/ikfast41.Transform6D.x86_64.0_1_3_4_5_6_f2.so')
+    ikmodel.load('/home/armuser/.openrave/kinematics.6daf9c2558dc15e66cbf2e7ceff5a950/ikfast41.Transform6D.x86_64.0_1_2_3_4_5.so')
 
     """If the robot you are using does not have an ikfast solution already generated, uncomment this line of code
     FIXME:This should be automatically detected.
