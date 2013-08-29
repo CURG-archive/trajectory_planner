@@ -199,8 +199,8 @@ def cbirrt_planning_string( goal_list, starting_list = [] ):
             
 
 
-    filename = "/home/armuser/ros/trajectory_planner/cmovetraj.txt"
-    planner_string += " smoothing_itrs 100 filename " +filename + " \n"
+    filename = "/home/armuser/ros/rosbuild_src/trajectory_planner/cmovetraj.txt"
+    planner_string += " smoothingitrs 100 filename " +filename + " \n"
     return True, planner_string, filename
              
 
@@ -211,6 +211,7 @@ def run_cbirrt_with_planner_string( or_env, planner_string ):
     @param tsr_string - tsr string
     return the success of the planner
     """
+    print planner_string
     current_robot = check_or_load_staubli( or_env )
     current_robot.SetActiveDOFs(range(6))
     if not current_robot:
@@ -365,7 +366,7 @@ def run_cbirrt_with_tran ( or_env, tran, starting_list = [] ):
     filename = []
     dof_list = []
     for i in range(len(j)):
-        success, planner_string, filename = cbirrt_planning_string( j[i].tolist(), starting_list )
+        success, planner_string, filename = cbirrt_planning_string( j[i].tolist(), starting_list )        
         success =  run_cbirrt_with_planner_string( or_env, planner_string)
         if success:
             dof_list = dof_list_from_traj_file(filename, range(6))
@@ -462,7 +463,7 @@ def load_table( or_env ):
     """@brief Load a table whose base is the world origin
     @param or_env - OpenRave environment to add table to. 
     """
-    table_url = '/home/armuser/ros/RearmGraspit/models/obstacles/zeroplane.iv'
+    table_url = '/home/armuser/ros/rosbuild_src/RearmGraspit/models/obstacles/zeroplane.iv'
     #graspit uses mm instead of meters
     kb = or_env.ReadTrimeshFile(table_url)
     kb.vertices /= 1000
@@ -479,7 +480,7 @@ def regenerate_ikmodel():
     ikmodel.autogenerate()
 
 
-def SetupStaubliEnv(debug = False):
+def SetupStaubliEnv(debug = False, robot_active = True):
     """@brief - set up the staubli environment for planning
     @param debug - boolean flag to determine whether to visualize the openrave
     environment. 
@@ -502,11 +503,12 @@ def SetupStaubliEnv(debug = False):
     listener = tf.TransformListener()
     time.sleep(1)
     """Set the position of the arm relative to the world in openrave"""
-    
-    staubli_in_world_tf = listener.lookupTransform('/armbase','/world', rospy.Time(0))    
-    staubli_in_world = pm.toMatrix(pm.fromTf(staubli_in_world_tf))
-    staubli.SetTransform(linalg.inv(staubli_in_world))
-
+    try:
+        staubli_in_world_tf = listener.lookupTransform('/armbase','/world', rospy.Time(0))    
+        staubli_in_world = pm.toMatrix(pm.fromTf(staubli_in_world_tf))
+        staubli.SetTransform(linalg.inv(staubli_in_world))
+    except:
+        pass
     """Stop the base from worrying about collisions """
     b = staubli.GetLinks()
     b[0].Enable(False)
@@ -536,7 +538,8 @@ def SetupStaubliEnv(debug = False):
     global_data.listener = listener
 
     """Update the current joint position of the robot in the world"""
-    update_robot(staubli)
+    if robot_active:
+        update_robot(staubli)
     return global_data 
     
 
@@ -600,6 +603,33 @@ def get_object_height(or_env, object_name = 'object', col = 2, filename = ''):
     return -min(tm.vertices[:,col]), k
 
 
+def add_object_to_planner(global_data, object_name = 'object', filename = '' ):
+    """@brief - Add an object to the openrave planner.
+
+    @param or_env - OpenRave environment object
+    @param object_name - Name of the object, assumed to be the same as the object's frame in the TF tree
+    
+    
+    """
+    k = []    
+    k = global_data.or_env.GetKinBody(object_name)
+    if not k:
+        try:
+            tm = global_data.or_env.ReadTrimeshFile(filename)
+            if amax(tm.vertices) > 2.0:
+                tm.vertices /= 1000.0
+            k = RaveCreateKinBody(global_data.or_env,"")
+            k.SetName(object_name)
+            k.InitFromTrimesh(tm, True)
+            global_data.or_env.AddKinBody(k)
+        except Exception, e:
+            warn('Failed to load object - object %s, filename %s, error: %s'%(object_name, filename,e))
+            return [],[]
+    #Get the object transform in the world. 
+    obj_tran = pm.toMatrix(pm.fromTf(global_data.listener.lookupTransform("/world", object_name, rospy.Time(0))))
+    k.SetTransform(obj_tran)
+
+    
 
 def publish_true_object_tran(height):
     """@brief - A debugging function to visualize the origin of the objects
@@ -678,7 +708,7 @@ def release_exp():
 
 
 
-def pregrasp_object(global_data, filename, adjust_height, grasp_tran, object_height_col = 2,
+def pregrasp_object(global_data, object_name, adjust_height, grasp_tran, object_height_col = 2,
                     pregrasp_dist = -.05, object_height_adjustment = 0.0, run_it = True):
     """@brief - Move the hand to the pregrasp position. This procedure is suprisingly intricate.
 
@@ -695,32 +725,18 @@ def pregrasp_object(global_data, filename, adjust_height, grasp_tran, object_hei
     method only knowing the location of the base of the object - the height of the object's origin from the base
     must be used to adjust it's location in openrave before planning. 
     """
-    height = 0
-    print filename
-    height,k = get_object_height(or_env = global_data.or_env, filename = filename, col = object_height_col)
-    
-    if height == []:
-        return [], [], [], []
-    
-    height += object_height_adjustment
-    if not adjust_height:
-        height = 0
-    #Get the object transform in the world. 
-    obj_tran = pm.toMatrix(pm.fromTf(global_data.listener.lookupTransform("/world","/object", rospy.Time(0))))
 
-    object_height_adjustment_tran = publish_true_object_tran(height)
-    if (obj_tran == [] or
-           object_height_adjustment_tran == []):
+    print "Pregrasping object: %s"%(object_name)
+
+
+    #Get the object transform in the world. 
+    obj_tran = pm.toMatrix(pm.fromTf(global_data.listener.lookupTransform("/world",object_name, rospy.Time(0))))
+
+    if (obj_tran == []):
         warn("Scene graph in TF is broken! Most\
            likely, the object transform could not be found.")
         return [],[], [], []
-    
-    #set the object transform in openrave
-    obj_tran = dot(object_height_adjustment_tran, obj_tran)    
-        
-    k.SetTransform(obj_tran)
-    """Finished setting up object location in openrave"""
-
+                
 
     """Set up and visualize the grasp transforms"""
 
