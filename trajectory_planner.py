@@ -52,7 +52,7 @@ import warnings
 
 random.seed(10)
 
-global global_data
+#global global_data
 
 class GlobalData:
     def __init__(self):
@@ -480,14 +480,14 @@ def regenerate_ikmodel():
     ikmodel.autogenerate()
 
 
-def SetupStaubliEnv(debug = False, robot_active = True):
+def SetupStaubliEnv(debug = False, robot_active = True, no_ros = False):
     """@brief - set up the staubli environment for planning
     @param debug - boolean flag to determine whether to visualize the openrave
     environment. 
     """
-    if rospy.get_name() =='/unnamed':
+    if rospy.get_name() =='/unnamed' and not no_ros:
         rospy.init_node('trajectory_planner_node')
-    global global_data
+#    global global_data
     global_data = GlobalData()
     global_data.or_env = []
     #FIXME: Lame test for collision checker loading correctly
@@ -500,10 +500,11 @@ def SetupStaubliEnv(debug = False, robot_active = True):
     staubli = check_or_load_staubli( global_data.or_env )
     
     table = load_table( global_data.or_env )
-    listener = tf.TransformListener()
-    time.sleep(1)
+    listener = []
     """Set the position of the arm relative to the world in openrave"""
     try:
+        listener = tf.TransformListener()
+        time.sleep(1)
         staubli_in_world_tf = listener.lookupTransform('/armbase','/world', rospy.Time(0))    
         staubli_in_world = pm.toMatrix(pm.fromTf(staubli_in_world_tf))
         staubli.SetTransform(linalg.inv(staubli_in_world))
