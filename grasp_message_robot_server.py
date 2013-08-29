@@ -115,46 +115,47 @@ class GraspExecutor():
         The grasp and lifting phase is currently completely open loop
         
         """
-        if (time() - self.last_grasp_time) < 30:
-            return [], []
-        self.last_grasp_time = time()
-        print grasp_msg
-        grasp_status = graspit_msgs.msg.GraspStatus.SUCCESS
-        grasp_status_msg = "grasp_succeeded"
-        success = 1
-        if not tp.is_home():
-           print 'go home'
-           tp.go_home(self.global_data)
-        #    if not success:
-        #        grasp_status = graspit_msgs.msg.GraspStatus.UNREACHABLE
-        #        grasp_status_msg = "Unable to go home"
-               
-        if success:
-            success, grasp_status_msg, positions = tp.open_barrett()
-            if not success:
-                grasp_status = graspit_msgs.msg.GraspStatus.ROBOTERROR
-                
-        if success:
-            grasp_tran = pm.toMatrix(pm.fromMsg(grasp_msg.final_grasp_pose))
-            grasp_tran[0:3,3] /=1000 #mm to meters
-            tp.MoveHandSrv(1, [0,0,0, grasp_msg.pre_grasp_dof[0]])
-            tp.update_robot(self.global_data.or_env.GetRobots()[0])
+        with self.global_data.or_env:
+            if (time() - self.last_grasp_time) < 30:
+                return [], []
+            self.last_grasp_time = time()
+            print grasp_msg
+            grasp_status = graspit_msgs.msg.GraspStatus.SUCCESS
+            grasp_status_msg = "grasp_succeeded"
+            success = 1
+            if not tp.is_home():
+                print 'go home'
+                tp.go_home(self.global_data)
+            #    if not success:
+            #        grasp_status = graspit_msgs.msg.GraspStatus.UNREACHABLE
+            #        grasp_status_msg = "Unable to go home"
 
-            print 'pre-grasp'
-            self.model_manager()
+            if success:
+                success, grasp_status_msg, positions = tp.open_barrett()
+                if not success:
+                    grasp_status = graspit_msgs.msg.GraspStatus.ROBOTERROR
+
+            if success:
+                grasp_tran = pm.toMatrix(pm.fromMsg(grasp_msg.final_grasp_pose))
+                grasp_tran[0:3,3] /=1000 #mm to meters
+                tp.MoveHandSrv(1, [0,0,0, grasp_msg.pre_grasp_dof[0]])
+                tp.update_robot(self.global_data.or_env.GetRobots()[0])
+
+                print 'pre-grasp'
+                self.model_manager()
 #            success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, file_name_dict[self.target_object_name],  grasp_tran)
-            print 'after model_manager()'
-            success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, self.target_object_name,  False, grasp_tran)
-            print 'after pre-grasp'
-            #raw_input("Press enter...")
-            tp.update_robot(self.global_data.or_env.GetRobots()[0])
-            if not success:
-                if not j:
-                    grasp_status = graspit_msgs.msg.GraspStatus.UNREACHABLE
-                    grasp_status_msg = "Pregrasp tran Out of range!"
-                else:
-                    grasp_status = graspit_msgs.msg.GraspStatus.FAILED
-                    grasp_status_msg = "Unknown planner failure!"
+                print 'after model_manager()'
+                success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, self.target_object_name,  False, grasp_tran)
+                print 'after pre-grasp'
+                #raw_input("Press enter...")
+                tp.update_robot(self.global_data.or_env.GetRobots()[0])
+                if not success:
+                    if not j:
+                        grasp_status = graspit_msgs.msg.GraspStatus.UNREACHABLE
+                        grasp_status_msg = "Pregrasp tran Out of range!"
+                    else:
+                        grasp_status = graspit_msgs.msg.GraspStatus.FAILED
+                        grasp_status_msg = "Unknown planner failure!"
 
         if success:
             if not Hao:
