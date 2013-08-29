@@ -38,11 +38,12 @@ class GraspExecutor():
         self.name_listener = rospy.Subscriber("/graspit/target_name", String, self.process_object_name)
         self.refresh_models_listener = rospy.Subscriber("/graspit/refresh_models", Empty, self.refresh_model_list)
         
-        if init_planner:
-            self.global_data = tp.SetupStaubliEnv(True)
-            self.model_manager = ModelRecManager(self.global_data.listener)
-        else:
-            self.model_manager = ModelRecManager()
+        
+        self.global_data = tp.SetupStaubliEnv(True, init_planner)
+        
+        
+        
+        self.model_manager = ModelRecManager(self.global_data.listener)
         self.graspit_status_publisher = rospy.Publisher("/graspit/status", graspit_msgs.msg.GraspStatus)
         self.graspit_target_publisher = rospy.Publisher("/graspit/target_name", String)
         self.graspit_object_publisher = rospy.Publisher("/graspit/object_name", graspit_msgs.msg.ObjectInfo)
@@ -50,16 +51,21 @@ class GraspExecutor():
         self.target_object_name = "flask"
 
         self.last_grasp_time = 0
-        self.table_cube=[geometry_msgs.msg.Point(-0.7,0,0), geometry_msgs.msg.Point(0,1,1)]
+        self.table_cube=[geometry_msgs.msg.Point(-0.7,0,-0.02), geometry_msgs.msg.Point(0.2,1,1)]
 
     def process_object_name(self, string):
         self.target_object_name = string.data
     
     def refresh_model_list(self, empty_msg):
-        print "refreshing model list"
+
+        
         self.model_manager.refresh()
         self.model_manager()
-        self.publish_target()
+        #self.publish_target()
+        self.remove_object_publisher.publish('ALL')
+        self.publish_table_models()
+        self.remove_all_objects_from_planner()
+        self.add_all_objects_to_planner()
 
     def publish_target(self):
         self.graspit_target_publisher.publish(self.model_manager.get_model_names()[0])
@@ -67,16 +73,41 @@ class GraspExecutor():
     def publish_table_models(self):
         self.model_manager()
         table_models = [model for model in self.model_manager.model_list if self.point_within_table_cube(model.get_world_pose().position)]
+
+        print '\n'.join(['Model rejected %s'%(model.object_name) for model in self.model_manager.model_list if model not in table_models])
+        
         for model in table_models:
             model()
+            
             object_name = "%s %s"%(model.model_name, model.object_name)
-            self.graspit_object_publisher.publish(object_name, model.get_world_pose())
+            print "Sending object: %s \n"%(object_name)
+            p = model.get_world_pose()
+            print "Model name: %s"%(model.object_name)
+            print p
+            self.graspit_object_publisher.publish(object_name, p)
+        self.graspit_status_publisher.publish(0, '')
 
     def clear_objects(self):
         model_name_list = []        
         model_name_list = [model.object_name for model in self.model_manager.model_list]
         self.remove_objects_publisher.publish(' '.join(model_name_list))
-        
+
+    def add_object_to_planner(self, model):
+        tp.add_object_to_planner(self.global_data, model.object_name, file_name_dict[model.model_name])
+
+    def add_all_objects_to_planner(self):
+        for model in self.model_manager.model_list:
+            self.add_object_to_planner(model)
+
+    def remove_all_objects_from_planner(self):
+        body_list = self.global_data.or_env.GetBodies()
+        ignored_body_list = ['StaubliRobot', 'table']
+        for body in body_list:
+            if body.GetName() not in ignored_body_list:
+                self.global_data.or_env.Remove(body)
+                del body
+                
+
     def process_grasp_msg(self, grasp_msg):
         """@brief - Attempt to grasp the object and lift it
 
@@ -113,7 +144,7 @@ class GraspExecutor():
             self.model_manager()
 #            success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, file_name_dict[self.target_object_name],  grasp_tran)
             print 'after model_manager()'
-            success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, file_name_dict[self.target_object_name],  False, grasp_tran)
+            success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, self.target_object_name,  False, grasp_tran)
             print 'after pre-grasp'
             #raw_input("Press enter...")
             tp.update_robot(self.global_data.or_env.GetRobots()[0])
@@ -181,7 +212,10 @@ class GraspExecutor():
         keys = ['x', 'y', 'z']
         for k in keys:
             t = getattr(test_point, k)
-            if t < getattr(min_corner_point, k) or t > getattr(max_corner_point, k):
+            min_test = getattr(min_corner_point, k)
+            max_test = getattr(max_corner_point, k)
+            if t < min_test or t > max_test:
+                print 'Failed to be inside table in key %s - min - %f max - %f value %f'%(k, min_test, max_test, t)
                 return False
         return True
 
@@ -189,9 +223,11 @@ class GraspExecutor():
 
 
 if __name__ == '__main__':
-    try:
+    try:        
         rospy.init_node('graspit_message_robot_server')
-        ge = GraspExecutor()
+        init_planner = rospy.get_param('init_planner', True)
+        print "init planner value %d \n"%(init_planner)
+        ge = GraspExecutor(init_planner = init_planner)
         if Hao:
             ae = AdjustExecutor(ge.global_data)
             se = ShakeExecutor(ge.global_data)
@@ -202,7 +238,7 @@ if __name__ == '__main__':
 #       ipshell(local_ns = locals())
         
         while not rospy.is_shutdown():
-            'foo'
+            ge.model_manager.rebroadcast_object_tfs()
             loop.sleep()
     except rospy.ROSInterruptException: pass
 
