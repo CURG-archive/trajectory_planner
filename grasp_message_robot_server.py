@@ -35,6 +35,9 @@ class GraspExecutor():
 
     def __init__(self, init_planner = True):
         self.grasp_listener = rospy.Subscriber("/graspit/grasps", graspit_msgs.msg.Grasp, self.process_grasp_msg)
+
+        self.grasp_analyzer = rospy.Subscriber("/graspit/analyze_grasps", graspit_msgs.msg.Grasp, self.analyze_grasp)
+        
         self.name_listener = rospy.Subscriber("/graspit/target_name", String, self.process_object_name)
         self.refresh_models_listener = rospy.Subscriber("/graspit/refresh_models", Empty, self.refresh_model_list)
         
@@ -106,7 +109,85 @@ class GraspExecutor():
             if body.GetName() not in ignored_body_list:
                 self.global_data.or_env.Remove(body)
                 del body
-                
+
+    def test_grasp_msg(self, grasp_msg):
+
+        def set_home(rob):
+            rob.SetActiveDOFs(range(10))
+            rob.SetActiveDOFValues([0,0,0,0,0,0,0,0,0,0])
+            
+        def set_barrett_hand_open(rob):
+            rob.SetActiveDOFs(range(6,10))
+            rob.SetActiveDOFValues([0,0,0,0])                
+
+        def pregrasp_tran_from_msg(grasp_msg):
+            grasp_tran = pm.toMatrix(pm.fromMsg(grasp_msg.final_grasp_pose))
+            grasp_tran[0:3,3] /=1000 #mm to meters
+            return grasp_tran
+
+        def test_pose_reachability(rob, tran):
+            #Test if end effector pose is in collision
+            rob.SetActiveDOFs(range(6))
+            end_effector_collision =  rob.GetManipulators()[0].CheckEndEffectorCollision(tran)
+            if end_effector_collision:
+                return 1
+            
+            #Test if pose is reachable
+            j = or_env.GetRobots()[0].GetManipulators()[0].FindIKSolutions(tran, IkFilterOptions.CheckEnvCollisions)
+            if j is not []:
+                return 0
+            
+            #Test if pose is reachable if we ignore collisions all together
+            j = or_env.GetRobots()[0].GetManipulators()[0].FindIKSolutions(tran, 0)
+            if j is not []:
+                return 2
+
+        def test_trajectory_reachability(rob, tran):
+            success, trajectory_filename, dof_list, j = tp.run_cbirrt_with_tran( self.global_data.or_env, tran )
+
+
+        def set_barrett_enabled(rob, collision):
+            links = rob.GetManipulators()[0].GetChildLinks()
+            [l.Enable(collision) for l in links[1:]]
+             
+            
+            
+        with staubli:
+            set_home(staubli)            
+
+            target_object = global_data.or_env.GetKinBody(self.target_name)
+            obj_tran = target_object.GetTransform()
+
+            grasp_tran = dot(pregrasp_tran_from_msg(grasp_msg), obj_tran)
+            pre_grasp_tran = dot(tp.get_pregrasp_tran_from_tran(grasp_tran, -.05),
+                                 obj_tran)
+            
+            #Can we reach the pregrasp pose
+            pregrasp_test = test_pose_reachability(staubli, pre_grasp_tran)
+            if pregrasp_test:
+                return 0, 0, pregrasp_test
+
+            #Can we reach the grasp pose
+            #Disable target object collisions
+            
+            grasp_test = test_pose_reachability(staubli, grasp_tran)
+            if grasp_test:
+                return 0, 1, grasp_test
+            
+
+            
+            success, trajectory_filename, dof_list, j = run_cbirrt_with_tran( global_data.or_env, pre_grasp_tran, 1 )
+             
+            if not success:
+                return 0, 2, 0
+
+            return 1, 0, 0
+
+    def analyze_grasp(self, grasp_msg):
+        success, failure_mode, score =  self.test_grasp_msg(grasp_msg)
+        if not success:
+            print "Grasp unreachable: %i %i %i"%(success, failure_mode, score)
+            
 
     def process_grasp_msg(self, grasp_msg):
         """@brief - Attempt to grasp the object and lift it
