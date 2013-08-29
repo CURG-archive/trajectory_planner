@@ -156,7 +156,7 @@ def dof_list_to_cbirrt_planning_string( joint_dof_list , is_start_flag ):
     
     
 
-def cbirrt_planning_string( goal_list, starting_list = [] ):
+def cbirrt_planning_string( goal_list, starting_list = [], smoothing_iters = 100 ):
     """@brief - Return a string for planning a motion using a pose message list using CBirrt
 
 
@@ -200,7 +200,7 @@ def cbirrt_planning_string( goal_list, starting_list = [] ):
 
 
     filename = "/home/armuser/ros/rosbuild_src/trajectory_planner/cmovetraj.txt"
-    planner_string += " smoothingitrs 100 filename " +filename + " \n"
+    planner_string += " smoothingitrs %i filename %s"%(smoothing_iters, filename) + " \n"
     return True, planner_string, filename
              
 
@@ -225,7 +225,7 @@ def run_cbirrt_with_planner_string( or_env, planner_string ):
        
     
 
-def run_cbirrt_with_pose_list ( or_env, goal_list, starting_list = [] ):
+def run_cbirrt_with_pose_list ( or_env, goal_list, starting_list = [], smoothing_iters = 100 ):
     """Run the cbirrt planner starting with lists of poses or dof values
     @param or_env - openrave python environment
     @param goal_list - a list containing geometry_msgs.Pose or a list of dofs
@@ -233,7 +233,7 @@ def run_cbirrt_with_pose_list ( or_env, goal_list, starting_list = [] ):
     returns success and a filename of the trajectory
     """
 
-    success, planner_string, filename = cbirrt_planning_string( goal_list, starting_list )
+    success, planner_string, filename = cbirrt_planning_string( goal_list, starting_list, smoothing_iters )
     success = run_cbirrt_with_planner_string( or_env, planner_string)
 
     if success:
@@ -327,7 +327,7 @@ def go_home(global_data = [], robot_index = 0):
         if hasattr(global_data,'home_position'):
             home_position = global_data.home_position
         update_robot(global_data.or_env.GetRobots()[robot_index])
-        success, dof_filename, dof_list, goal_list =  run_cbirrt_with_pose_list ( global_data.or_env, home_position, starting_list = [] )        
+        success, dof_filename, dof_list, goal_list =  run_cbirrt_with_pose_list ( global_data.or_env, home_position, starting_list = [], smoothing_iters )        
         print dof_list
     else:
         """if we have not been given a valid global_data, simply make a joint motion        
@@ -348,7 +348,7 @@ def go_home(global_data = [], robot_index = 0):
     
 
 
-def run_cbirrt_with_tran ( or_env, tran, starting_list = [] ):
+def run_cbirrt_with_tran ( or_env, tran, starting_list = [], smoothing_iters = 100 ):
     """Run the cbirrt planner starting with lists of poses or dof values
     @param or_env - openrave python environment
     @param goal_list - a list containing geometry_msgs.Pose or a list of dofs
@@ -366,7 +366,7 @@ def run_cbirrt_with_tran ( or_env, tran, starting_list = [] ):
     filename = []
     dof_list = []
     for i in range(len(j)):
-        success, planner_string, filename = cbirrt_planning_string( j[i].tolist(), starting_list )        
+        success, planner_string, filename = cbirrt_planning_string( j[i].tolist(), starting_list, smoothing_iters )        
         success =  run_cbirrt_with_planner_string( or_env, planner_string)
         if success:
             dof_list = dof_list_from_traj_file(filename, range(6))
