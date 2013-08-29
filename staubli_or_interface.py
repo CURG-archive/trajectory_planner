@@ -53,9 +53,9 @@ def update_robot(rob):
        @param rob - OpenRave robot object.
     """
     rob.SetActiveDOFs(range(6))
-    j = get_staubli_joints()
-    rob.SetActiveDOFValues(j)
     try:
+        j = get_staubli_joints()
+        rob.SetActiveDOFValues(j)
         barret_joints = get_barrett_joints()
         rob.SetActiveDOFs(range(6,10))
         rob.SetActiveDOFValues(barret_joints)
