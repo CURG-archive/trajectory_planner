@@ -73,7 +73,7 @@ class ModelRecManager( object ):
         ModelRecManager.tf_listener = tf_listener
         ModelRecManager.tf_broadcaster = tf_broadcaster
         self.model_name_server = rospy.Service('/get_object_info', graspit_msgs.srv.GetObjectInfo, self.get_object_info)
-        self.table_cube=[geometry_msgs.msg.Point(-0.7,-1.0,0), geometry_msgs.msg.Point(0,0,0)]
+        
         
 
     def refresh(self):
@@ -145,13 +145,24 @@ class ModelRecManager( object ):
         return resp
         
     def uniquify_object_names(self):
-        object_names = {}
+        object_name_dict = {}
         for model in self.model_list:
-            if model.model_name not in object_names.keys():
-                object_names[model.model_name] = 0
-            model.object_name = "%s_%i"%(model.model_name, object_names[model.model_name])
-            object_names[model.model_name] = object_names[model.model_name] + 1
+            if model.object_name in object_name_dict:
+                object_name_dict[model.object_name].append(model)
+            else:
+                object_name_dict[model.object_name] = [model]
+
+        model_names = dict(object_name_dict)
         
+        for model_list in object_name_dict.values():
+            if len(model_list) > 1:
+                for model_num, model in enumerate(model_list):
+                    test_name = model.object_name
+                    while test_name in model_names:
+                        test_name = "%s_%i"%(model.object_name, model_num)
+                        model_num += 1
+                    model.object_name = test_name
+                    model_names[test_name] = model
 
 
     def align_pose(self, pose):
@@ -167,13 +178,6 @@ class ModelRecManager( object ):
         objectInCameraModified = dot(worldInCamera, objectInWorld)
         return pm.toMsg(pm.fromMatrix(objectInCameraModified))
 
-def point_within_cube(test_point, min_corner_point, max_corner_point):
-    keys = ['x','y','z']
-    for k in keys:
-        t = getattr(test_point, k)
-        if t < getattr(min_corner_point, k) or t > getattr(max_corner_point, k):
-            return False
-    return True
 
                      
 #      print x.listener.lookupTransform("/world","/object", rospy.Time(0))
