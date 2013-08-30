@@ -133,17 +133,18 @@ class GraspExecutor():
                 return 1
             
             #Test if pose is reachable
-            j = or_env.GetRobots()[0].GetManipulators()[0].FindIKSolutions(tran, IkFilterOptions.CheckEnvCollisions)
+            j = rob.GetManipulators()[0].FindIKSolutions(tran, IkFilterOptions.CheckEnvCollisions)
             if j is not []:
                 return 0
             
             #Test if pose is reachable if we ignore collisions all together
-            j = or_env.GetRobots()[0].GetManipulators()[0].FindIKSolutions(tran, 0)
+            j = rob.GetManipulators()[0].FindIKSolutions(tran, 0)
             if j is not []:
                 return 2
 
-        def test_trajectory_reachability(rob, tran):
-            success, trajectory_filename, dof_list, j = tp.run_cbirrt_with_tran( self.global_data.or_env, tran )
+        def test_trajectory_reachability(tran):
+            success, trajectory_filename, dof_list, j = tp.run_cbirrt_with_tran( self.global_data.or_env, tran, [], 1 )
+            return success
 
 
         def set_barrett_enabled(rob, collision):
@@ -151,9 +152,9 @@ class GraspExecutor():
             [l.Enable(collision) for l in links[1:]]
              
             
-            
-        with staubli:
-            set_home(staubli)            
+        robot = self.global_data.or_env.GetRobots()[0]
+        with robot:
+            set_home(robot)            
 
             target_object = global_data.or_env.GetKinBody(self.target_name)
             obj_tran = target_object.GetTransform()
@@ -162,26 +163,27 @@ class GraspExecutor():
             pre_grasp_tran = dot(tp.get_pregrasp_tran_from_tran(grasp_tran, -.05),
                                  obj_tran)
             
-            #Can we reach the pregrasp pose
-            pregrasp_test = test_pose_reachability(staubli, pre_grasp_tran)
+            pregrasp_test = test_pose_reachability(robot, pre_grasp_tran)
             if pregrasp_test:
                 return 0, 0, pregrasp_test
 
+            
             #Can we reach the grasp pose
             #Disable target object collisions
-            
-            grasp_test = test_pose_reachability(staubli, grasp_tran)
+            #Can we reach the pregrasp pose
+            target_object.Enable(False)            
+            grasp_test = test_pose_reachability(robot, grasp_tran)
             if grasp_test:
                 return 0, 1, grasp_test
+            target_object.Enable(True)
             
-
+            trajectory_test = test_trajectory_reachability(pre_grasp_gran)
             
-            success, trajectory_filename, dof_list, j = run_cbirrt_with_tran( global_data.or_env, pre_grasp_tran, 1 )
              
-            if not success:
+            if not trajectory_test:
                 return 0, 2, 0
 
-            return 1, 0, 0
+        return 1, 0, 0
 
     def analyze_grasp(self, grasp_msg):
         success, failure_mode, score =  self.test_grasp_msg(grasp_msg)
