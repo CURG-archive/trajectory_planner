@@ -12,7 +12,7 @@ import tf_conversions.posemath as pm
 from time import sleep 
 import trajectory_planner as tp
 import pdb
-from test_object_grasps import file_name_dict
+from object_filename_dict import file_name_dict
 from std_msgs.msg import String, Empty
 #from IPython.Shell import IPShellEmbed
 from adjust_message_robot_server import AdjustExecutor, ShakeExecutor, MoveExecutor
