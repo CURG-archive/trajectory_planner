@@ -327,7 +327,7 @@ def go_home(global_data = [], robot_index = 0):
         if hasattr(global_data,'home_position'):
             home_position = global_data.home_position
         update_robot(global_data.or_env.GetRobots()[robot_index])
-        success, dof_filename, dof_list, goal_list =  run_cbirrt_with_pose_list ( global_data.or_env, home_position, starting_list = [], smoothing_iters )        
+        success, dof_filename, dof_list, goal_list =  run_cbirrt_with_pose_list ( global_data.or_env, home_position, starting_list = [])        
         print dof_list
     else:
         """if we have not been given a valid global_data, simply make a joint motion        
