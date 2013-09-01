@@ -51,6 +51,8 @@ class GraspExecutor():
         self.graspit_target_publisher = rospy.Publisher("/graspit/target_name", String)
         self.graspit_object_publisher = rospy.Publisher("/graspit/object_name", graspit_msgs.msg.ObjectInfo)
         self.remove_object_publisher = rospy.Publisher("/graspit/remove_objects", String)
+        self.grasp_analysis_publisher = rospy.Publisher("/graspit/analyze_grasps_results", graspit_msgs.msg.GraspStatus)
+        
         self.target_object_name = "flask"
 
         self.last_grasp_time = 0
@@ -174,22 +176,27 @@ class GraspExecutor():
             target_object.Enable(False)            
             grasp_test = test_pose_reachability(robot, grasp_tran)
             if grasp_test:
-                return 0, 1, grasp_test
+                return 0, graspit_msgs.msg.GRASPERROR, grasp_test
             target_object.Enable(True)
             
             trajectory_test = test_trajectory_reachability(pre_grasp_gran)
             
              
             if not trajectory_test:
-                return 0, 2, 0
+                return 0, graspit_msgs.msg.ROBOTERROR, graspit_msgs.msg.PREGRASPERROR
 
         return 1, 0, 0
 
     def analyze_grasp(self, grasp_msg):
         success, failure_mode, score =  self.test_grasp_msg(grasp_msg)
+        gs = graspit_msgs.msg.GraspStatus()
         if not success:
-            print "Grasp unreachable: %i %i %i"%(success, failure_mode, score)
-            
+            gs.status_msg =  "Grasp unreachable: %i %i %i"%(success, failure_mode, score)
+            print gs.status_msg
+        gs.grasp_identifier = grasp_msg.secondary_qualities[0]
+        gs.grasp_status = success | failure_mode | score
+        self.grasp_analysis_publisher.publish(gs)
+        
 
     def process_grasp_msg(self, grasp_msg):
         """@brief - Attempt to grasp the object and lift it
