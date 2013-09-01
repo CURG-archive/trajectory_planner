@@ -132,7 +132,7 @@ class GraspExecutor():
             rob.SetActiveDOFs(range(6))
             end_effector_collision =  rob.GetManipulators()[0].CheckEndEffectorCollision(tran)
             if end_effector_collision:
-                return 1
+                return graspit_msgs.msg.ENDEFFECTORERROR
             
             #Test if pose is reachable
             j = rob.GetManipulators()[0].FindIKSolutions(tran, IkFilterOptions.CheckEnvCollisions)
@@ -142,7 +142,7 @@ class GraspExecutor():
             #Test if pose is reachable if we ignore collisions all together
             j = rob.GetManipulators()[0].FindIKSolutions(tran, 0)
             if j is not []:
-                return 2
+                return graspit_msgs.msg.UNREACHABLE
 
         def test_trajectory_reachability(tran):
             success, trajectory_filename, dof_list, j = tp.run_cbirrt_with_tran( self.global_data.or_env, tran, [], 1 )
@@ -167,7 +167,7 @@ class GraspExecutor():
             
             pregrasp_test = test_pose_reachability(robot, pre_grasp_tran)
             if pregrasp_test:
-                return 0, 0, pregrasp_test
+                return 0, graspit_msgs.msg.GraspStatus.PREGRASPERROR, pregrasp_test
 
             
             #Can we reach the grasp pose
