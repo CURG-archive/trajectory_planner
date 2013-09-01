@@ -122,7 +122,7 @@ class GraspExecutor():
             rob.SetActiveDOFs(range(6,10))
             rob.SetActiveDOFValues([0,0,0,0])                
 
-        def pregrasp_tran_from_msg(grasp_msg):
+        def grasp_tran_from_msg(grasp_msg):
             grasp_tran = pm.toMatrix(pm.fromMsg(grasp_msg.final_grasp_pose))
             grasp_tran[0:3,3] /=1000 #mm to meters
             return grasp_tran
@@ -161,7 +161,7 @@ class GraspExecutor():
             target_object = global_data.or_env.GetKinBody(self.target_name)
             obj_tran = target_object.GetTransform()
 
-            grasp_tran = dot(pregrasp_tran_from_msg(grasp_msg), obj_tran)
+            grasp_tran = dot(grasp_tran_from_msg(grasp_msg), obj_tran)
             pre_grasp_tran = dot(tp.get_pregrasp_tran_from_tran(grasp_tran, -.05),
                                  obj_tran)
             
