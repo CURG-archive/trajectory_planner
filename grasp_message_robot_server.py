@@ -90,7 +90,7 @@ class GraspExecutor():
             print "Model name: %s"%(model.object_name)
             print p
             self.graspit_object_publisher.publish(object_name, p)
-        self.graspit_status_publisher.publish(0, '')
+        self.graspit_status_publisher.publish(0, '', -1)
 
     def clear_objects(self):
         model_name_list = []        
@@ -294,7 +294,7 @@ class GraspExecutor():
             rospy.logwarn(grasp_status_msg)
         else:
             rospy.logfatal(grasp_status_msg)
-        self.graspit_status_publisher.publish(grasp_status, grasp_status_msg)
+        self.graspit_status_publisher.publish(grasp_status, grasp_status_msg, -1)
         print grasp_status_msg
         return grasp_status, grasp_status_msg
 
