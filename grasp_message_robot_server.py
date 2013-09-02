@@ -158,7 +158,7 @@ class GraspExecutor():
         with robot:
             set_home(robot)            
 
-            target_object = global_data.or_env.GetKinBody(self.target_name)
+            target_object = self.global_data.or_env.GetKinBody(self.target_object_name)
             obj_tran = target_object.GetTransform()
 
             grasp_tran = dot(grasp_tran_from_msg(grasp_msg), obj_tran)
