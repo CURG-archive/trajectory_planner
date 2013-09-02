@@ -132,17 +132,17 @@ class GraspExecutor():
             rob.SetActiveDOFs(range(6))
             end_effector_collision =  rob.GetManipulators()[0].CheckEndEffectorCollision(tran)
             if end_effector_collision:
-                return graspit_msgs.msg.ENDEFFECTORERROR
+                return graspit_msgs.msg.GraspStatus.ENDEFFECTORERROR
             
             #Test if pose is reachable
-            j = rob.GetManipulators()[0].FindIKSolutions(tran, IkFilterOptions.CheckEnvCollisions)
+            j = rob.GetManipulators()[0].FindIKSolutions(tran, tp.IkFilterOptions.CheckEnvCollisions)
             if j is not []:
-                return 0
+                return graspit_msgs.msg.GraspStatus.SUCCESS
             
             #Test if pose is reachable if we ignore collisions all together
             j = rob.GetManipulators()[0].FindIKSolutions(tran, 0)
             if j is not []:
-                return graspit_msgs.msg.UNREACHABLE
+                return graspit_msgs.msg.GraspStatus.UNREACHABLE
 
         def test_trajectory_reachability(tran):
             success, trajectory_filename, dof_list, j = tp.run_cbirrt_with_tran( self.global_data.or_env, tran, [], 1 )
@@ -166,8 +166,8 @@ class GraspExecutor():
                                  obj_tran)
             
             pregrasp_test = test_pose_reachability(robot, pre_grasp_tran)
-            if pregrasp_test:
-                return 0, graspit_msgs.msg.GraspStatus.PREGRASPERROR, pregrasp_test
+            if pregrasp_test is not graspit_msgs.msg.GraspStatus.SUCCESS:
+                return graspit_msgs.msg.GraspStatus.FAILED, graspit_msgs.msg.GraspStatus.PREGRASPERROR, pregrasp_test
 
             
             #Can we reach the grasp pose
@@ -175,17 +175,17 @@ class GraspExecutor():
             #Can we reach the pregrasp pose
             target_object.Enable(False)            
             grasp_test = test_pose_reachability(robot, grasp_tran)
-            if grasp_test:
-                return 0, graspit_msgs.msg.GRASPERROR, grasp_test
+            if grasp_test is not graspit_msgs.msg.GraspStatus.SUCCESS:
+                return graspit_msgs.msg.GraspStatus.FAILED, graspit_msgs.msg.GraspStatus.GRASPERROR, grasp_test
             target_object.Enable(True)
             
-            trajectory_test = test_trajectory_reachability(pre_grasp_gran)
+            trajectory_test = test_trajectory_reachability(pre_grasp_tran)
             
              
             if not trajectory_test:
-                return 0, graspit_msgs.msg.ROBOTERROR, graspit_msgs.msg.PREGRASPERROR
+                return graspit_msgs.msg.GraspStatus.FAILED, graspit_msgs.msg.GraspStatus.ROBOTERROR, graspit_msgs.msg.GraspStatus.PREGRASPERROR
 
-        return 1, 0, 0
+        return graspit_msgs.msg.GraspStatus.SUCCESS, 0, 0
 
     def analyze_grasp(self, grasp_msg):
         success, failure_mode, score =  self.test_grasp_msg(grasp_msg)
