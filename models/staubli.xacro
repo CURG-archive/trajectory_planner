@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="staubli">
+  <!-- math constants -->
+  <xacro:property name="pi" value="3.1415926535897931" />
+  <!-- staubli geometry files are in millimeters -->
+  <xacro:property name="staubli_scale" value="0.001 0.001 0.001" />
+
+  <!-- named paths -->
+  <xacro:property name="staubli_geom_path" value="/home/armuser/ros/trajectory_planner/models"/>
+
+
+  <!-- link macro -->
+  <xacro:macro name="link_macro" params="link_name link_num origin">
+    <link name="${link_name}">      
+    <visual>
+      <geometry>
+	${origin}
+	<mesh filename="file:${staubli_geom_path}/staubli_${link_num}.dae" scale="${staubli_scale}"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+	${origin}
+	<mesh filename="file:${staubli_geom_path}/staubli_${link_num}.dae" scale="${staubli_scale}"/>
+      </geometry>
+    </collision>
+  </link>
+  </xacro:macro>
+
+
+
+
+
+  <xacro:link_macro link_name="base_link" link_num="1" />
+  <xacro:link_macro link_name="arm_link_0" link_num="2" />
+  <xacro:link_macro link_name="arm_link_1" link_num="3" />
+  <xacro:link_macro link_name="arm_link_2" link_num="4" />
+  <xacro:link_macro link_name="arm_link_3" link_num="5" />
+  <xacro:link_macro link_name="arm_link_4" link_num="6" />
+  <xacro:link_macro link_name="arm_link_5" link_num="7" /> 
+
+
+
+  <!-- Joint 0 -->
+  <joint name="arm_joint_0" type="revolute">
+    <origin xyz="0 0 0" rpy="${pi/2} 0.000000 ${pi}"/>    
+    <parent link="base_link"/>
+    <child link="arm_link_0" />
+    <axis xyz="0 0 1" /> 
+    <limit lower="-${pi/2}" upper="${pi/2}" velocity=".95" effort="0.0" />    
+  </joint>
+
+  <!-- Joint 1 -->
+  <joint name="arm_joint_1" type="revolute">
+    <origin xyz="0 0.4 0.1606" rpy="0.000000 0.000000 -1.570796"/>    
+    <parent link="arm_link_0"/>
+    <child link="arm_link_1" />
+    <axis xyz="0 0 1" /> 
+    <limit lower="-${127/360.0*pi}" upper="${127/360.0*pi}" velocity=".95" effort="0.0" />    
+  </joint>
+
+  <!-- Joint 2 -->
+  <joint name="arm_joint_2" type="revolute">
+    <origin xyz="0 0 -0.1406" rpy="1.570796 0.000000 -1.570796"/>    
+    <parent link="arm_link_1"/>
+    <child link="arm_link_2" />
+    <axis xyz="0 0 1" /> 
+    <limit lower="-${152/360.0*pi}" upper="${152/360.0*pi}" velocity=".95" effort="0.0" />    
+  </joint>
+
+  <!-- Joint 3 -->
+  <joint name="arm_joint_3" type="revolute">
+    <origin xyz="0 0 0.45" rpy="1.570796 0.000000 3.141593"/>    
+    <parent link="arm_link_2"/>
+    <child link="arm_link_3" />
+    <axis xyz="0 0 1" /> 
+    <limit lower="-${270/360.0*pi}" upper="${270/360.0*pi}" velocity=".95" effort="0.0" />    
+  </joint>
+
+  <!-- Joint 4 -->
+  <joint name="arm_joint_4" type="revolute">
+    <origin xyz="0 0 0" rpy="1.570796 0.000000 3.141593"/>    
+    <parent link="arm_link_3"/>
+    <child link="arm_link_4" />
+    <axis xyz="0 0 1" /> 
+    <limit lower="-${102/360.0*pi}" upper="${102/360.0*pi}" velocity=".95" effort="0.0" />    
+  </joint>
+
+  <!-- Joint 5 -->
+  <joint name="arm_joint_5" type="revolute">
+    <origin xyz="0 0 0.07" rpy="0 0 0"/>    
+    <parent link="arm_link_4"/>
+    <child link="arm_link_5" />
+    <axis xyz="0 0 1" /> 
+    <limit lower="-${359/360.0*pi}" upper="${359/360.0*pi}" velocity=".95" effort="0.0" />    
+  </joint>
+
+</robot>
+
+
