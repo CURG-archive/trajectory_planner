@@ -35,10 +35,7 @@ class GraspExecutor():
 
     def __init__(self, init_planner = True):
         self.grasp_listener = rospy.Subscriber("/graspit/grasps", graspit_msgs.msg.Grasp, self.process_grasp_msg)
-
-        self.grasp_analyzer = rospy.Subscriber("/graspit/analyze_grasps", graspit_msgs.msg.Grasp, self.analyze_grasp)
-        
-        self.name_listener = rospy.Subscriber("/graspit/target_name", String, self.process_object_name)
+    
         self.refresh_models_listener = rospy.Subscriber("/graspit/refresh_models", Empty, self.refresh_model_list)
         
         
@@ -48,154 +45,91 @@ class GraspExecutor():
         
         self.model_manager = ModelRecManager(self.global_data.listener)
         self.graspit_status_publisher = rospy.Publisher("/graspit/status", graspit_msgs.msg.GraspStatus)
-        self.graspit_target_publisher = rospy.Publisher("/graspit/target_name", String)
-        self.graspit_object_publisher = rospy.Publisher("/graspit/object_name", graspit_msgs.msg.ObjectInfo)
+
+        self.graspit_scene_publisher = rospy.Publisher("/graspit/scene_info", graspit_msgs.msg.SceneInfo)
         self.remove_object_publisher = rospy.Publisher("/graspit/remove_objects", String)
-        self.grasp_analysis_publisher = rospy.Publisher("/graspit/analyze_grasps_results", graspit_msgs.msg.GraspStatus)
+
         
-        self.target_object_name = "flask"
+
 
         self.last_grasp_time = 0
         self.table_cube=[geometry_msgs.msg.Point(-0.7,0,-0.02), geometry_msgs.msg.Point(0.2,1,1)]
+        self.grasp_analyzer = grasp_analyzer.GraspAnalyzer(self.global_data)
 
-    def process_object_name(self, string):
-        self.target_object_name = string.data
-    
-    def refresh_model_list(self, empty_msg):
-
-        
+    def refresh_model_list(self, empty_msg):        
         self.model_manager.refresh()
         self.model_manager()
-        #self.publish_target()
+        
         self.remove_object_publisher.publish('ALL')
         self.publish_table_models()
         self.remove_all_objects_from_planner()
         self.add_all_objects_to_planner()
 
-    def publish_target(self):
-        self.graspit_target_publisher.publish(self.model_manager.get_model_names()[0])
 
     def publish_table_models(self):
-        self.model_manager()
-        table_models = [model for model in self.model_manager.model_list if self.point_within_table_cube(model.get_world_pose().position)]
+        """
+        @brief - Publishes only the objects that are in a prism above the table to GraspIt        
+        """
 
-        print '\n'.join(['Model rejected %s'%(model.object_name) for model in self.model_manager.model_list if model not in table_models])
+        #Republish all of the object pose TFs
+        self.model_manager()
+
+        #get a list of models in that cube above the table
+        table_models = [model for model in self.model_manager.model_list
+                        if self.point_within_table_cube(model.get_world_pose().position)]
+
+        #Print a list of rejected models to the terminal
+        print '\n'.join(['Model rejected %s'%(model.object_name)
+                         for model in self.model_manager.model_list if model not in table_models])
         
+        #For each model in the valid model list, add the model to the object list
+        #and publish it to GraspIt!
+        #FIXME -- needs to use scene message
+        object_list = []
+        scene_msg = graspit_msgs.msg.SceneInfo()
         for model in table_models:
             model()
             
-            object_name = "%s %s"%(model.model_name, model.object_name)
-            print "Sending object: %s \n"%(object_name)
             p = model.get_world_pose()
             print "Model name: %s"%(model.object_name)
             print p
-            self.graspit_object_publisher.publish(object_name, p)
-        self.graspit_status_publisher.publish(0, '', -1)
+            object_list.append(graspit_msgs.msg.ObjectInfo(
+                                                 model.object_name, model.model_name, p))
+        scene_msg.objects = object_list
+        self.graspit_scene_publisher.publish(scene_msg)
 
-    def clear_objects(self):
-        model_name_list = []        
-        model_name_list = [model.object_name for model in self.model_manager.model_list]
-        self.remove_objects_publisher.publish(' '.join(model_name_list))
 
     def add_object_to_planner(self, model):
-        tp.add_object_to_planner(self.global_data, model.object_name, file_name_dict[model.model_name])
+        """
+        @brief - Adds a model_rec_manager model to openrave
+        """
+        tp.add_object_to_planner(self.global_data,
+                                 model.object_name,
+                                 file_name_dict[model.model_name])
+
+
 
     def add_all_objects_to_planner(self):
+        """
+        @brief - Adds all of the models in the model_rec_manager to openrave
+        """
         for model in self.model_manager.model_list:
             self.add_object_to_planner(model)
 
     def remove_all_objects_from_planner(self):
+        """
+        @brief - Clears all models from openrave except the experiment table and the staubli arm
+
+        FIXME - Add additional obstacles for camera post and computers around robot
+        and some way of annotating that they shouldn't be removed.
+        """
         body_list = self.global_data.or_env.GetBodies()
         ignored_body_list = ['StaubliRobot', 'table']
         for body in body_list:
             if body.GetName() not in ignored_body_list:
                 self.global_data.or_env.Remove(body)
                 del body
-
-    def test_grasp_msg(self, grasp_msg):
-
-        def set_home(rob):
-            rob.SetActiveDOFs(range(10))
-            rob.SetActiveDOFValues([0,0,0,0,0,0,0,0,0,0])
-            
-        def set_barrett_hand_open(rob):
-            rob.SetActiveDOFs(range(6,10))
-            rob.SetActiveDOFValues([0,0,0,0])                
-
-        def grasp_tran_from_msg(grasp_msg):
-            grasp_tran = pm.toMatrix(pm.fromMsg(grasp_msg.final_grasp_pose))
-            grasp_tran[0:3,3] /=1000 #mm to meters
-            return grasp_tran
-
-        def test_pose_reachability(rob, tran):
-            #Test if end effector pose is in collision
-            rob.SetActiveDOFs(range(6))
-            end_effector_collision =  rob.GetManipulators()[0].CheckEndEffectorCollision(tran)
-            if end_effector_collision:
-                return graspit_msgs.msg.GraspStatus.ENDEFFECTORERROR
-            
-            #Test if pose is reachable
-            j = rob.GetManipulators()[0].FindIKSolutions(tran, tp.IkFilterOptions.CheckEnvCollisions)
-            if j is not []:
-                return graspit_msgs.msg.GraspStatus.SUCCESS
-            
-            #Test if pose is reachable if we ignore collisions all together
-            j = rob.GetManipulators()[0].FindIKSolutions(tran, 0)
-            if j is not []:
-                return graspit_msgs.msg.GraspStatus.UNREACHABLE
-
-        def test_trajectory_reachability(tran):
-            success, trajectory_filename, dof_list, j = tp.run_cbirrt_with_tran( self.global_data.or_env, tran, [], 1 )
-            return success
-
-
-        def set_barrett_enabled(rob, collision):
-            links = rob.GetManipulators()[0].GetChildLinks()
-            [l.Enable(collision) for l in links[1:]]
-             
-            
-        robot = self.global_data.or_env.GetRobots()[0]
-        with robot:
-            set_home(robot)            
-
-            target_object = self.global_data.or_env.GetKinBody(self.target_object_name)
-            obj_tran = target_object.GetTransform()
-
-            grasp_tran = dot(grasp_tran_from_msg(grasp_msg), obj_tran)
-            pre_grasp_tran = dot(tp.get_pregrasp_tran_from_tran(grasp_tran, -.05),
-                                 obj_tran)
-            
-            pregrasp_test = test_pose_reachability(robot, pre_grasp_tran)
-            if pregrasp_test is not graspit_msgs.msg.GraspStatus.SUCCESS:
-                return graspit_msgs.msg.GraspStatus.FAILED, graspit_msgs.msg.GraspStatus.PREGRASPERROR, pregrasp_test
-
-            
-            #Can we reach the grasp pose
-            #Disable target object collisions
-            #Can we reach the pregrasp pose
-            target_object.Enable(False)            
-            grasp_test = test_pose_reachability(robot, grasp_tran)
-            if grasp_test is not graspit_msgs.msg.GraspStatus.SUCCESS:
-                return graspit_msgs.msg.GraspStatus.FAILED, graspit_msgs.msg.GraspStatus.GRASPERROR, grasp_test
-            target_object.Enable(True)
-            
-            trajectory_test = test_trajectory_reachability(pre_grasp_tran)
-            
-             
-            if not trajectory_test:
-                return graspit_msgs.msg.GraspStatus.FAILED, graspit_msgs.msg.GraspStatus.ROBOTERROR, graspit_msgs.msg.GraspStatus.PREGRASPERROR
-
-        return graspit_msgs.msg.GraspStatus.SUCCESS, 0, 0
-
-    def analyze_grasp(self, grasp_msg):
-        success, failure_mode, score =  self.test_grasp_msg(grasp_msg)
-        gs = graspit_msgs.msg.GraspStatus()
-        if not success:
-            gs.status_msg =  "Grasp unreachable: %i %i %i"%(success, failure_mode, score)
-            print gs.status_msg
-        gs.grasp_identifier = grasp_msg.secondary_qualities[0]
-        gs.grasp_status = success | failure_mode | score
-        self.grasp_analysis_publisher.publish(gs)
+    
         
 
     def process_grasp_msg(self, grasp_msg):
