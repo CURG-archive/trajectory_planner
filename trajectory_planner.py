@@ -62,6 +62,7 @@ class GlobalData:
         self.ft_tare_pub = []
         self.ft_sub = []
         self.hs_sub = []
+        self.robot_running = True
 
 def stop_everything():
     """@brief - Disable all movement of robot.
@@ -540,7 +541,8 @@ def SetupStaubliEnv(debug = False, robot_active = True, no_ros = False):
 
     """Update the current joint position of the robot in the world"""
     if robot_active:
-        update_robot(staubli)
+        global_data.robot_running = update_robot(staubli)
+    global_data.robot_running = robot_active
     return global_data 
     
 
