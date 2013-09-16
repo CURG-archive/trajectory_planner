@@ -4,6 +4,9 @@ import random
 import trajectory_planner as tp
 import graspit_msgs.msg
 import itertools
+import tf_conversions.posemath as pm
+from numpy import pi, eye, dot, cross, linalg, sqrt, ceil, size
+from numpy import hstack, vstack, mat, array, arange, fabs
 
 
 class GraspAnalyzer(object):
