@@ -14,11 +14,12 @@
   <depend package="std_srvs"/>
   <depend package="geometry_msgs"/>
   <depend package="graspit_msgs"/>
-  <depend package="graspit_ros_server"/>
+  <!--<depend package="graspit_ros_server"/>-->
   <depend package="tf_conversions"/>
   <depend package= "tf"/>
   <depend package="staubliTX60"/>
   <depend package="model_rec2"/>
+  <depend package="pr_msgs"/>
 
 
   <!-- also depends on openrave, but not openraveros -->
