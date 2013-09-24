@@ -864,4 +864,12 @@ def send_model_rec():
     p = rospy.Publisher("/graspit/refresh_models", Empty)
     p.publish()
     
-    
+
+def send_model_reload():
+    """@brief - Helper function to request that the vision system reinitialize. 
+
+    """
+    from std_msgs.msg import String, Empty
+    p = rospy.Publisher("/graspit/reload_models", Empty)
+    p.publish()
+

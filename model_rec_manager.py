@@ -25,38 +25,68 @@ import visualization_msgs.msg
 import point_cloud2
 import geometry_msgs.msg
 import std_msgs.msg
+import StringIO
+import cPickle
+
+
+
+class ModelManager( object ):
+    def __init__(self, model_name, point_cloud_data, pose):
+        self.model_name = model_name
+        self.object_name = model_name
+        self.point_cloud_data = point_cloud_data
+        self.pose = pose
+        self.bc = ModelRecManager.tf_broadcaster
+        self.listener = ModelRecManager.tf_listener
+        
+    def __call__(self):
+        tf_pose = pm.toTf(pm.fromMsg(self.pose))
+        self.bc.sendTransform(tf_pose[0], tf_pose[1], rospy.Time.now(), self.object_name, "/camera_rgb_optical_frame")
+            
+    def get_dist(self):
+        self.__call__()
+        self.listener.waitForTransform("/world", self.object_name, rospy.Time(0),rospy.Duration(10))
+        (trans, rot) = self.listener.lookupTransform("/world",self.object_name, rospy.Time(0))
+        return linalg.norm(trans)
+    
+    def __len__(self):
+        return self.get_dist()
+    
+    def get_world_pose(self):
+        self.__call__()
+        self.listener.waitForTransform("/world", self.object_name, rospy.Time(0),rospy.Duration(10))            
+        return pm.toMsg(pm.fromTf(self.listener.lookupTransform("/world",self.object_name, rospy.Time(0))))
+
+        
+    def __getstate__(self):
+        state = {}
+        state['model_name'] = self.model_name
+        state['object_name'] = self.object_name
+        buff = StringIO.StringIO()
+        self.point_cloud_data.serialize(buff)
+        buff.seek(0)
+        state['point_cloud_data'] = buff.readlines()
+        state['pose'] = pm.toMatrix(pm.fromMsg(self.pose))        
+        return state
+
+    def __setstate__(self, state):
+        self.model_name = state['model_name']
+        self.object_name = state['object_name']
+        
+        buff = StringIO.StringIO()
+        buff.writelines(state['point_cloud_data'])
+        buff.seek(0)
+        self.point_cloud_data = sensor_msgs.msg.PointCloud2()
+        self.point_cloud_data.deserialize(buff.buf)
+        self.pose = pm.toMsg(pm.fromMatrix(state['pose']))
+        self.bc = ModelRecManager.tf_broadcaster        
+        self.listener = ModelRecManager.tf_listener
+
 
 
 class ModelRecManager( object ):
     tf_listener = []
-    tf_broadcaster = []
-    class ModelManager( object ):
-        def __init__(self, model_name, point_cloud_data, pose):
-            self.model_name = model_name
-            self.object_name = model_name
-            self.point_cloud_data = point_cloud_data
-            self.pose = pose
-            self.bc = ModelRecManager.tf_broadcaster
-            self.listener = ModelRecManager.tf_listener
-            
-        def __call__(self):
-            tf_pose = pm.toTf(pm.fromMsg(self.pose))
-            self.bc.sendTransform(tf_pose[0], tf_pose[1], rospy.Time.now(), self.object_name, "/camera_rgb_optical_frame")
-            
-        def get_dist(self):
-            self.__call__()
-            self.listener.waitForTransform("/world", self.object_name, rospy.Time(0),rospy.Duration(10))
-            (trans, rot) = self.listener.lookupTransform("/world",self.object_name, rospy.Time(0))
-            return linalg.norm(trans)
-
-        def __len__(self):
-            return self.get_dist()
-
-        def get_world_pose(self):
-            self.__call__()
-            self.listener.waitForTransform("/world", self.object_name, rospy.Time(0),rospy.Duration(10))            
-            return pm.toMsg(pm.fromTf(self.listener.lookupTransform("/world",self.object_name, rospy.Time(0))))
-            
+    tf_broadcaster = []                   
             
     def __init__(self, tf_listener = [], tf_broadcaster = []):
         if rospy.get_name() =='/unnamed':
@@ -87,12 +117,14 @@ class ModelRecManager( object ):
                 pose_modified = self.align_pose(resp.object_pose[i])
             else:
                 pose_modified = resp.object_pose[i]
-            self.model_list.append(self.ModelManager(resp.object_name[i],
+            self.model_list.append(ModelManager(resp.object_name[i],
                                                      resp.pointcloud[i],
                                                      pose_modified))
         for j in self.model_list:
              j.model_name = '/'+j.model_name
              j.point_cloud_data.header.frame_id=j.model_name
+        self.save()
+        
 
     def __call__(self):
         self.uniquify_object_names()
@@ -102,7 +134,7 @@ class ModelRecManager( object ):
             self.publish_object_markers()
 
     def publish_target_pointcloud(self):
-        self.model_list.sort(key=ModelRecManager.ModelManager.get_dist)
+        self.model_list.sort(key=ModelManager.get_dist)
         x = self.model_list[0]
         print x.get_dist()
         tf_pose = pm.toTf(pm.fromMsg(x.pose))
@@ -178,7 +210,14 @@ class ModelRecManager( object ):
         objectInCameraModified = dot(worldInCamera, objectInWorld)
         return pm.toMsg(pm.fromMatrix(objectInCameraModified))
 
-
-                     
+    def save(self):
+        f = open(roslib.packages.get_pkg_dir('trajectory_planner') + '/model_rec_output.dat','w')
+        cPickle.dump(self.model_list, f)
+        f.close()
+        
+    def read(self):
+        f = open(roslib.packages.get_pkg_dir('trajectory_planner') + '/model_rec_output.dat','r')
+        self.model_list = cPickle.load(f)
+        f.close()
 #      print x.listener.lookupTransform("/world","/object", rospy.Time(0))
     
