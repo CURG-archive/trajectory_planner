@@ -1,0 +1,27 @@
+<package>
+  <name>trajectory_planner</name>
+  <version>1.0.0</version>
+  <description>
+     trajectory_planner - Wrapper for openrave trajectory planner - takes a list of poses, plans a path to at least one of them.  returns path as trajectory messag    
+  </description>
+  <author>Jon Weisz</author>
+  <maintainer email="jvarley@cs.columbia.edu">Jake Varley</maintainer>
+  <license>BSD</license>
+  <url>http://ros.org/wiki/trajectory_planner</url>
+
+
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>std_srvs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>graspit_msgs</build_depend>
+  <build_depend>graspit_ros_server</build_depend>
+  <build_depend>tf_conversions</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>staubliTX60</build_depend>
+  <build_depend>model_rec2</build_depend>
+
+
+</package>
+
+
