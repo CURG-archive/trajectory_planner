@@ -7,6 +7,7 @@ Helper functions for running a planner given only a set of start and end goals i
 Currently uses cbirrt planner
 """
 import roslib; roslib.load_manifest( "trajectory_planner" )
+import roslib.packages
 import rospy
 from numpy import pi, eye, dot, cross, linalg, sqrt, ceil, size
 from numpy import hstack, vstack, mat, array, arange, fabs
@@ -26,12 +27,14 @@ import geometry_msgs
  
 from tf import transformations as tr
 
-from GraspUtil import *
+#from GraspUtil import *
 
-
+import os
 import staubliTX60.msg
 import staubliTX60.srv
 import actionlib
+
+
 from openravepy import *
 import time
 import copy as cp
@@ -200,7 +203,7 @@ def cbirrt_planning_string( goal_list, starting_list = [], smoothing_iters = 100
             
 
 
-    filename = "/home/armuser/ros/rosbuild_src/trajectory_planner/cmovetraj.txt"
+    filename = roslib.packages.get_pkg_dir('trajectory_planner') + "/cmovetraj.txt"
     planner_string += " smoothingitrs %i filename %s"%(smoothing_iters, filename) + " \n"
     return True, planner_string, filename
              
@@ -464,7 +467,7 @@ def load_table( or_env ):
     """@brief Load a table whose base is the world origin
     @param or_env - OpenRave environment to add table to. 
     """
-    table_url = '/home/armuser/ros/rosbuild_src/RearmGraspit/models/obstacles/zeroplane.iv'
+    table_url = roslib.packages.get_pkg_dir('trajectory_planner') + '/models/zeroplane.iv'
     #graspit uses mm instead of meters
     kb = or_env.ReadTrimeshFile(table_url)
     kb.vertices /= 1000
@@ -516,12 +519,13 @@ def SetupStaubliEnv(debug = False, robot_active = True, no_ros = False):
     b[0].Enable(False)
     """Load the manipulation problem to enable ik solutions
     """
-    RaveLoadPlugin('/home/armuser/openrave/plugins/comps/plugins/libGeneralIK.so')
-    RaveLoadPlugin('/home/armuser/openrave/plugins/comps/plugins/libcbirrt.so')
-    RaveLoadPlugin('/home/armuser/openrave/plugins/comps/plugins/libmanipulation.so')
+    openrave_plugin_dir = os.environ['HOME']+'/openrave/plugins/comps/plugins/' 
+    RaveLoadPlugin(openrave_plugin_dir + 'libGeneralIK.so')
+    RaveLoadPlugin(openrave_plugin_dir + 'libcbirrt.so')
+    RaveLoadPlugin(openrave_plugin_dir + 'libmanipulation.so')
 
     ikmodel = openravepy.databases.inversekinematics.InverseKinematicsModel(staubli,iktype=IkParameterization.Type.Transform6D)
-    ikmodel.load('/home/armuser/.openrave/kinematics.6daf9c2558dc15e66cbf2e7ceff5a950/ikfast41.Transform6D.x86_64.0_1_2_3_4_5.so')
+    ikmodel.load(roslib.packages.get_pkg_dir('trajectory_planner') +'/ikfast_model/ikfast41.Transform6D.x86_64.0_1_2_3_4_5.so')
 
     """If the robot you are using does not have an ikfast solution already generated, uncomment this line of code
     FIXME:This should be automatically detected.
