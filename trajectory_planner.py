@@ -467,14 +467,14 @@ def load_table( or_env ):
     """@brief Load a table whose base is the world origin
     @param or_env - OpenRave environment to add table to. 
     """
-    table_url = roslib.packages.get_pkg_dir('trajectory_planner') + '/models/zeroplane.iv'
-    #graspit uses mm instead of meters
-    kb = or_env.ReadTrimeshFile(table_url)
-    kb.vertices /= 1000
-    k = RaveCreateKinBody(or_env, "")
-    k.SetName("table")
-    k.InitFromTrimesh(kb, True)
-    or_env.AddKinBody(k)
+    table_url = str(roslib.packages.get_pkg_dir('trajectory_planner') + '/models/zeroplane.iv')
+    if table_url != None:#graspit uses mm instead of meters
+        kb = or_env.ReadTrimeshFile(table_url)
+        kb.vertices /= 1000
+        k = RaveCreateKinBody(or_env, "")
+        k.SetName("table")
+        k.InitFromTrimesh(kb, True)
+        or_env.AddKinBody(k)
 
 def regenerate_ikmodel():
     global_data = GlobalData()
