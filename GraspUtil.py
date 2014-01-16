@@ -49,7 +49,6 @@ import geometry_msgs
 from tf import transformations as tr
 import tf_conversions.posemath as pm
 import graspit_msgs
-from graspit_ros_server.srv import PlanGraspService
 import copy
 
 # set logger levels for this function 
