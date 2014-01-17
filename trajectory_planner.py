@@ -44,7 +44,7 @@ import random
 import numbers
 
 #refactored ugly code that needs to die
-from object_filename_dict import *
+#from object_filename_dict import *
 from staubli_manager import *
 from staubli_or_interface import *
 from barrett_manager import *
