@@ -14,7 +14,6 @@ import trajectory_planner as tp
 import pdb
 from object_filename_dict import file_name_dict
 from std_msgs.msg import String, Empty
-#from IPython.Shell import IPShellEmbed
 from adjust_message_robot_server import AdjustExecutor, ShakeExecutor, MoveExecutor
 from time import time
 from model_rec_manager import *
