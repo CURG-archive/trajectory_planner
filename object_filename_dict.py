@@ -41,16 +41,11 @@ file_name_dict['18707'] = odwalla_file_name
 file_name_dict['18650'] = all_file_name
 
 file_name_dict['garnier_shampoo_bottle'] = garnier_file_name
-file_name_dict['/garnier_shampoo_bottle'] = garnier_file_name
 file_name_dict['all'] = all_file_name
-file_name_dict['/all'] = all_file_name
 file_name_dict['odwalla_bottle'] = odwalla_file_name
 file_name_dict['darpaflashlight'] = flashlight_file_name
-file_name_dict['/darpaflashlight'] = flashlight_file_name
 file_name_dict['gillette_shaving_gel'] = gillette_file_name
-file_name_dict['/gillette_shaving_gel'] = gillette_file_name
 file_name_dict['milk_carton'] = milk_carton_file_name
-file_name_dict['/milk_carton'] = milk_carton_file_name
 
 file_name_dict['drill_custom'] = drill_custom_file_name
 file_name_dict['mug_custom'] = mug_custom_file_name
