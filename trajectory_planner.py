@@ -12,7 +12,7 @@ import rospy
 from numpy import pi, eye, dot, cross, linalg, sqrt, ceil, size
 from numpy import hstack, vstack, mat, array, arange, fabs
 
-import pdb
+import ipdb
 #import openravepy as orpy
 
 import time
@@ -224,7 +224,11 @@ def run_cbirrt_with_planner_string( or_env, planner_string ):
 
     p = RaveCreateProblem( or_env, 'CBiRRT' ) 
     or_env.LoadProblem( p, current_robot.GetName() )
-    success = p.SendCommand( planner_string )
+    try:
+        success = p.SendCommand( planner_string )
+    except Exception as e:
+        rospy.logerror("Failed to run CBiRRT planner string %s with error %s"(planner_string, e)
+        ipdb.set_trace()
     return success
        
     
