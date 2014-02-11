@@ -121,8 +121,8 @@ class ModelRecManager( object ):
                                                      resp.pointcloud[i],
                                                      pose_modified))
         for j in self.model_list:
-             j.model_name = '/'+j.model_name
-             j.point_cloud_data.header.frame_id=j.model_name
+             j.model_name = j.model_name
+             j.point_cloud_data.header.frame_id='/' + j.model_name
         self.save()
         
 
