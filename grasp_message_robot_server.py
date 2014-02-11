@@ -118,8 +118,9 @@ class GraspExecutor():
         @brief - Adds a model_rec_manager model to openrave
         """
         tp.add_object_to_planner(self.global_data,
-                                 model.object_name,
-                                 file_name_dict[model.model_name])
+                                 model.object_name.strip('/'),
+                                 file_name_dict[model.model_name.strip('/')])
+
 
 
 
