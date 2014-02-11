@@ -203,7 +203,7 @@ def cbirrt_planning_string( goal_list, starting_list = [], smoothing_iters = 100
             
 
 
-    filename = roslib.packages.get_pkg_dir('trajectory_planner') + "/cmovetraj.txt"
+    filename = str(roslib.packages.get_pkg_dir('trajectory_planner')) + "/cmovetraj.txt"
     planner_string += " smoothingitrs %i filename %s"%(smoothing_iters, filename) + " \n"
     return True, planner_string, filename
              
