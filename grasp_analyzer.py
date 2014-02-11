@@ -166,6 +166,9 @@ class GraspAnalyzer(object):
             set_home(robot)            
 
             target_object = self.global_data.or_env.GetKinBody(grasp_msg.object_name)
+            if target_object is None:
+                rospy.logwarn("Trying to analyze grasp on %s, but the object is not in the planning environment", grasp_msg.object_name)
+                return None, None, None
 
             obj_tran = target_object.GetTransform()
 
@@ -213,6 +216,9 @@ class GraspAnalyzer(object):
 
     def analyze_grasp(self, grasp_msg):
         success, failure_mode, score =  self.test_grasp_msg(grasp_msg)
+        #success == None implies the analysis itself failed to run. Do nothing for now. 
+        if success == None:
+            return
         gs = graspit_msgs.msg.GraspStatus()
         if not success:
             gs.status_msg =  "Grasp %i unreachable: %i %i %i"%(grasp_msg.secondary_qualities[0], success, failure_mode, score)
