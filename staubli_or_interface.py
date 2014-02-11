@@ -2,6 +2,7 @@ import util
 from barrett_manager import *
 from staubli_manager import *
 import roslib.packages
+import util.str2num
 
 def check_or_load_staubli( or_env ):
     """@brief - make sure staubli is loaded into openrave environment
