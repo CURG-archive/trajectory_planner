@@ -14,7 +14,6 @@ import trajectory_planner as tp
 import pdb
 from object_filename_dict import file_name_dict
 from std_msgs.msg import String, Empty
-#from IPython.Shell import IPShellEmbed
 from adjust_message_robot_server import AdjustExecutor, ShakeExecutor, MoveExecutor
 from time import time
 from model_rec_manager import *
@@ -38,6 +37,8 @@ class GraspExecutor():
         self.grasp_listener = rospy.Subscriber("/graspit/grasps", graspit_msgs.msg.Grasp, self.process_grasp_msg)
     
         self.refresh_models_listener = rospy.Subscriber("/graspit/refresh_models", Empty, self.refresh_model_list)
+
+        self.reload_models_listener = rospy.Subscriber("/graspit/reload_models", Empty, self.reload_model_list)
         
         
         self.global_data = tp.SetupStaubliEnv(True, init_planner)
@@ -56,9 +57,21 @@ class GraspExecutor():
         self.last_grasp_time = 0
         self.table_cube=[geometry_msgs.msg.Point(-0.7,0,-0.02), geometry_msgs.msg.Point(0.2,1,1)]
         self.grasp_analyzer = grasp_analyzer.GraspAnalyzer(self.global_data)
+        if bool(rospy.get_param('reload_model_rec',0)):
+            self.reload_model_list([])
+            
 
     def refresh_model_list(self, empty_msg):        
         self.model_manager.refresh()
+        self.model_manager()
+        
+        self.remove_object_publisher.publish('ALL')
+        self.publish_table_models()
+        self.remove_all_objects_from_planner()
+        self.add_all_objects_to_planner()
+
+    def reload_model_list(self, empty_msg):
+        self.model_manager.read()
         self.model_manager()
         
         self.remove_object_publisher.publish('ALL')
@@ -105,8 +118,9 @@ class GraspExecutor():
         @brief - Adds a model_rec_manager model to openrave
         """
         tp.add_object_to_planner(self.global_data,
-                                 model.object_name,
-                                 file_name_dict[model.model_name])
+                                 model.object_name.strip('/'),
+                                 file_name_dict[model.model_name.strip('/')])
+
 
 
 
@@ -195,7 +209,7 @@ class GraspExecutor():
                     print 'after model_manager()'
 
                     #Calculate a trajectory to the pregrasp pose and move to it if necessary
-                    success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, msg.object_name,  False, grasp_tran, run_it = self.global_data.robot_running)
+                    success, final_tran, dof_list, j = tp.pregrasp_object(self.global_data, grasp_msg.object_name,  False, grasp_tran, run_it = self.global_data.robot_running)
                     print 'after pre-grasp'
 
                     #Failures shouldn't happen if grasp analysis is being used, so that's wierd.
@@ -216,6 +230,8 @@ class GraspExecutor():
                             self.global_data.or_env.GetRobots()[0].SetActiveDOFs(range(6,10))
                             self.global_data.or_env.GetRobots()[0].SetActiveDOFValues(list(grasp_msg.pre_grasp_dof[1:]) + [grasp_msg.pre_grasp_dof[0]])                    
                             self.global_data.or_env.GetRobots()[0].SetActiveDOFs(range(6))
+                            self.global_data.or_env.UpdatePublishedBodies()
+                            pdb.set_trace()
                             success = False
 
                     #If the pregrasp was unreachable, record the type of issue

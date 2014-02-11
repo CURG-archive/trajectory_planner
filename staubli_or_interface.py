@@ -1,6 +1,8 @@
 import util
 from barrett_manager import *
 from staubli_manager import *
+import roslib.packages
+import util.str2num
 
 def check_or_load_staubli( or_env ):
     """@brief - make sure staubli is loaded into openrave environment
@@ -14,7 +16,8 @@ def check_or_load_staubli( or_env ):
         print "trajectory_planner::run_cbirrt:: WARNING: too many robots in openrave environment \n"
         current_robot = robot_list[0]
     else:
-        current_robot = or_env.ReadRobotXMLFile("/home/armuser/openrave/openrave/robots/staubli.robot.xml")
+        print "trajectory planner directory: " + str(roslib.packages.get_pkg_dir("trajectory_planner"))
+        current_robot = or_env.ReadRobotXMLFile(str(roslib.packages.get_pkg_dir("trajectory_planner") +  "/models/staubli.robot.xml"))
         print "robot loaded"
         if current_robot:
             or_env.AddRobot(current_robot)
