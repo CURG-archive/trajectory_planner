@@ -18,7 +18,7 @@
   <build_depend>graspit_ros_server</build_depend>
   <build_depend>tf_conversions</build_depend>
   <build_depend>tf</build_depend>
-  <build_depend>staubliTX60</build_depend>
+  <build_depend>staubli_tx60</build_depend>
   <build_depend>model_rec2</build_depend>
 
 

@@ -1,6 +1,6 @@
 PKG= 'owd'
 import roslib; roslib.load_manifest(PKG)
-roslib.load_manifest('staubliTX60')
+roslib.load_manifest('staubli_tx60')
 import rospy
 from rospy import loginfo
 import numpy as np

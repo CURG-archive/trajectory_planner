@@ -1,5 +1,5 @@
 import roslib
-roslib.load_manifest("staubliTX60")
+roslib.load_manifest("staubli_tx60")
 import rospy
 import geometry_msgs.msg
 from std_srvs.srv import Empty as EmptySrv

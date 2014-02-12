@@ -30,8 +30,8 @@ from tf import transformations as tr
 #from GraspUtil import *
 
 import os
-import staubliTX60.msg
-import staubliTX60.srv
+import staubli_tx60.msg
+import staubli_tx60.srv
 import actionlib
 
 

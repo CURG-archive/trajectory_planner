@@ -4,7 +4,7 @@ from numpy import ones,zeros, linspace
 from actionlib_msgs.msg import *
 from std_msgs.msg import *
 from time import sleep
-from staubliTX60.srv import ResetMotion
+from staubli_tx60.srv import ResetMotion
 from math import pi
 
 global_data = dict()

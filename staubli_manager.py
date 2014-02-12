@@ -1,10 +1,10 @@
 import roslib 
-roslib.load_manifest("staubliTX60")
+roslib.load_manifest("staubli_tx60")
 import rospy
 from ft_manager import *
-import staubliTX60
-from staubliTX60.srv import *
-import staubliTX60.msg
+import staubli_tx60
+from staubli_tx60.srv import *
+import staubli_tx60.msg
 import geometry_msgs.msg
 import tf
 import tf.transformations
@@ -26,7 +26,7 @@ def point_list_to_msg_list( dof_traj_list ):
 
        Returns list of ros joint trajectory messages.
     """
-    p = staubliTX60.msg.StaubliMovementParams(jointVelocity = 0.4, jointAcc = 0.04, jointDec= 0.04,
+    p = staubli_tx60.msg.StaubliMovementParams(jointVelocity = 0.4, jointAcc = 0.04, jointDec= 0.04,
                                               endEffectorMaxTranslationVel =  9999.0,
                                               endEffectorMaxRotationalVel =  9999.0,
                                               movementType = 1,
@@ -36,7 +36,7 @@ def point_list_to_msg_list( dof_traj_list ):
     joint_point_msg_list = []
     for point in dof_traj_list:
         pf = [float(p2) for p2 in point]
-        joint_point_msg_list.append(staubliTX60.msg.JointTrajectoryPoint(jointValues = cp.deepcopy(pf), params = cp.deepcopy(p)))
+        joint_point_msg_list.append(staubli_tx60.msg.JointTrajectoryPoint(jointValues = cp.deepcopy(pf), params = cp.deepcopy(p)))
     joint_point_msg_list[-1].params.distBlendPrev = 0
     joint_point_msg_list[-1].params.distBlendNext = 0
     joint_point_msg_list[-1].params.movementType = 0
@@ -51,11 +51,11 @@ def run_staubli_on_joint_goal(j, blocking = False):
        
        Returns whether motion was successful if blocking or successfully enqueued if not blocking
     """
-    client = actionlib.SimpleActionClient('setJoints', staubliTX60.msg.SetJointsAction) 
+    client = actionlib.SimpleActionClient('setJoints', staubli_tx60.msg.SetJointsAction) 
     if not client.wait_for_server():
         print "SetJointTrajectory action server could not be found "
         return False, []
-    action_goal = staubliTX60.msg.SetJointsGoal(j = j)
+    action_goal = staubli_tx60.msg.SetJointsGoal(j = j)
     client.send_goal(action_goal)
     if blocking:
         client.wait_for_result()
@@ -77,12 +77,12 @@ def run_staubli_on_trajectory_point_message( dof_traj_list , blocking = False ):
         
     traj_message_list = point_list_to_msg_list( dof_traj_list )
 
-    client = actionlib.SimpleActionClient('setJointTrajectory', staubliTX60.msg.SetJointTrajectoryAction) 
+    client = actionlib.SimpleActionClient('setJointTrajectory', staubli_tx60.msg.SetJointTrajectoryAction) 
     if not client.wait_for_server():
         print "SetJointTrajectory action server could not be found "
         return False, client
     
-    action_goal = staubliTX60.msg.SetJointTrajectoryGoal(jointTrajectory = traj_message_list)
+    action_goal = staubli_tx60.msg.SetJointTrajectoryGoal(jointTrajectory = traj_message_list)
     client.send_goal(action_goal)
     
     if blocking:
@@ -145,7 +145,7 @@ def send_cartesian_goal(end_effector_tran, blocking = False, movement_params = [
     """
     
     if movement_params == []:
-        p = staubliTX60.msg.StaubliMovementParams(jointVelocity = 0.4,
+        p = staubli_tx60.msg.StaubliMovementParams(jointVelocity = 0.4,
                                                   jointAcc = 0.04,
                                                   jointDec= 0.04,
                                                   endEffectorMaxTranslationVel =  9999.0,
@@ -154,7 +154,7 @@ def send_cartesian_goal(end_effector_tran, blocking = False, movement_params = [
                                                   distBlendPrev = 0.01,
                                                   distBlendNext = 0.01)
     else:
-        p = staubliTX60.msg.StaubliMovementParams(jointVelocity = movement_params[0],
+        p = staubli_tx60.msg.StaubliMovementParams(jointVelocity = movement_params[0],
                                                   jointAcc = movement_params[1],
                                                   jointDec= movement_params[2],
                                                   endEffectorMaxTranslationVel =  9999.0,
@@ -163,12 +163,12 @@ def send_cartesian_goal(end_effector_tran, blocking = False, movement_params = [
                                                   distBlendPrev = 0.01,
                                                   distBlendNext = 0.01)
     
-    client = actionlib.SimpleActionClient('setCartesian', staubliTX60.msg.SetCartesianAction) 
+    client = actionlib.SimpleActionClient('setCartesian', staubli_tx60.msg.SetCartesianAction) 
     if not client.wait_for_server():
         print "SetCartesian action server could not be found "
         return False, []
 
-    action_goal = staubliTX60.msg.SetCartesianGoal()
+    action_goal = staubli_tx60.msg.SetCartesianGoal()
     action_goal.x,action_goal.y,action_goal.z = end_effector_tran[0:3,3]
     action_goal.rx,action_goal.ry,action_goal.rz = tf.transformations.euler_from_matrix( end_effector_tran, 'rxyz' )
     action_goal.lineCtrl = 1
