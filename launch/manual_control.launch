@@ -1,0 +1,3 @@
+<launch>
+  <node name="manual_control" pkg="trajectory_planner" type="manual_control.py" />
+</launch>

@@ -1,0 +1,3 @@
+<launch>
+  <node name="automatic_control" pkg="trajectory_planner" type="grasp_message_robot_server.py" />
+</launch>
