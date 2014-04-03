@@ -227,7 +227,7 @@ def run_cbirrt_with_planner_string( or_env, planner_string ):
     try:
         success = p.SendCommand( planner_string )
     except Exception as e:
-        rospy.logerror("Failed to run CBiRRT planner string %s with error %s"(planner_string, e)
+        rospy.logerror("Failed to run CBiRRT planner string %s with error %s"(planner_string, e))
         ipdb.set_trace()
     return success
        
