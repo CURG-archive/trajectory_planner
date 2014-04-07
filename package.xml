@@ -9,18 +9,28 @@
   <license>BSD</license>
   <url>http://ros.org/wiki/trajectory_planner</url>
 
-
+  <buildtool_depend>catkin</buildtool_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>std_srvs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>graspit_msgs</build_depend>
-  <build_depend>graspit_ros_server</build_depend>
   <build_depend>tf_conversions</build_depend>
   <build_depend>tf</build_depend>
   <build_depend>staubli_tx60</build_depend>
   <build_depend>model_rec2</build_depend>
+  <build_depend>pr_msgs</build_depend>
 
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>std_srvs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>graspit_msgs</run_depend>
+  <run_depend>tf_conversions</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>staubli_tx60</run_depend>
+  <run_depend>model_rec2</run_depend>
+  <run_depend>pr_msgs</run_depend>
 
 </package>
 

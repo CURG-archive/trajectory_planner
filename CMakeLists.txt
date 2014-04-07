@@ -1,29 +1,17 @@
 cmake_minimum_required(VERSION 2.4.6)
 project(trajectory_planner)
 
-# Set the build type.  Options are:
-#  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
-#  Debug          : w/ debug symbols, w/o optimization
-#  Release        : w/o debug symbols, w/ optimization
-#  RelWithDebInfo : w/ debug symbols, w/ optimization
-#  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+find_package(catkin REQUIRED rospy std_msgs pr_msgs std_srvs geometry_msgs graspit_msgs tf_conversions tf staubli_tx60 model_rec2)
 
 
-#set the default path for built executables to the "bin" directory
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-#set the default path for built libraries to the "lib" directory
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-#uncomment if you have defined messages
-#rosbuild_genmsg()
-#uncomment if you have defined services
-#rosbuild_gensrv()
 
-#common commands for building c++ executables and libraries
-#rosbuild_add_library(trajectory_planner src/example.cpp)
-#target_link_libraries(${PROJECT_NAME} another_library)
-#rosbuild_add_boost_directories()
-#rosbuild_link_boost(${PROJECT_NAME} thread)
-#rosbuild_add_executable(example examples/example.cpp)
-#target_link_libraries(example ${PROJECT_NAME})
+catkin_python_setup()
+
+catkin_package(
+#  INCLUDE_DIRS include
+#  LIBRARIES test
+  CATKIN_DEPENDS std_msgs pr_msgs std_srvs geometry_msgs graspit_msgs tf_conversions tf staubli_tx60 model_rec2
+#  DEPENDS system_lib
+)
+
