@@ -33,7 +33,7 @@ class GraspExecutor():
     @member target_object_name - the current grasp target
     """
 
-    def __init__(self, init_planner = True):
+    def __init__(self, use_real_hw = True):
         self.grasp_listener = rospy.Subscriber("/graspit/grasps", graspit_msgs.msg.Grasp, self.process_grasp_msg)
     
         self.refresh_models_listener = rospy.Subscriber("/graspit/refresh_models", Empty, self.refresh_model_list)
@@ -41,7 +41,7 @@ class GraspExecutor():
         self.reload_models_listener = rospy.Subscriber("/graspit/reload_models", Empty, self.reload_model_list)
         
         
-        self.global_data = tp.SetupStaubliEnv(True, init_planner)
+        self.global_data = tp.SetupStaubliEnv(True, use_real_hw)
         
         
         
@@ -354,9 +354,9 @@ class GraspExecutor():
 if __name__ == '__main__':
     try:        
         rospy.init_node('graspit_message_robot_server')
-        init_planner = rospy.get_param('init_planner', True)
-        print "init planner value %d \n"%(init_planner)
-        ge = GraspExecutor(init_planner = init_planner)
+        use_real_hw = rospy.get_param('use_real_hw', True)
+        print "use_real_hw value %d \n"%(use_real_hw)
+        ge = GraspExecutor(use_real_hw = use_real_hw)
         if Hao:
             ae = AdjustExecutor(ge.global_data)
             se = ShakeExecutor(ge.global_data)
